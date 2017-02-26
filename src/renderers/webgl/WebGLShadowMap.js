@@ -31,8 +31,9 @@ function WebGLShadowMap( _renderer, _lights, _objects, capabilities ) {
 		_lightPositionWorld = new Vector3(),
 
 		_MorphingFlag = 1,
+		_SkinningFlag = 2,
 
-		_NumberOfMaterialVariants = ( _MorphingFlag ) + 1,
+		_NumberOfMaterialVariants = ( _MorphingFlag | _SkinningFlag ) + 1,
 
 		_depthMaterials = new Array( _NumberOfMaterialVariants ),
 		_distanceMaterials = new Array( _NumberOfMaterialVariants ),
@@ -66,9 +67,11 @@ function WebGLShadowMap( _renderer, _lights, _objects, capabilities ) {
 	for ( var i = 0; i !== _NumberOfMaterialVariants; ++ i ) {
 
 		var useMorphing = ( i & _MorphingFlag ) !== 0;
+		var useSkinning = ( i & _SkinningFlag ) !== 0;
 
 		var depthMaterial = depthMaterialTemplate.clone();
 		depthMaterial.morphTargets = useMorphing;
+		depthMaterial.skinning = useSkinning;
 
 		_depthMaterials[ i ] = depthMaterial;
 
@@ -80,6 +83,7 @@ function WebGLShadowMap( _renderer, _lights, _objects, capabilities ) {
 			vertexShader: distanceShader.vertexShader,
 			fragmentShader: distanceShader.fragmentShader,
 			morphTargets: useMorphing,
+			skinning: useSkinning,
 			clipping: true
 		} );
 
@@ -109,9 +113,9 @@ function WebGLShadowMap( _renderer, _lights, _objects, capabilities ) {
 		if ( _lightShadows.length === 0 ) return;
 
 		// Set GL state for depth map.
-		_state.buffers.color.setClear( 1, 1, 1, 1 );
 		_state.disable( _gl.BLEND );
-		_state.setDepthTest( true );
+		_state.buffers.color.setClear( 1, 1, 1, 1 );
+		_state.buffers.depth.setTest( true );
 		_state.setScissorTest( false );
 
 		// render depth map
@@ -191,13 +195,6 @@ function WebGLShadowMap( _renderer, _lights, _objects, capabilities ) {
 			}
 
 			if ( shadow.isSpotLightShadow ) {
-
-				shadow.update( light );
-
-			}
-
-			// TODO (abelnation / sam-g-steel): is this needed?
-			if ( shadow && shadow.isRectAreaLightShadow ) {
 
 				shadow.update( light );
 
@@ -305,9 +302,18 @@ function WebGLShadowMap( _renderer, _lights, _objects, capabilities ) {
 
 			}
 
+			if ( object.isSkinnedMesh && material.skinning === false ) {
+
+				console.warn( 'THREE.WebGLShadowMap: THREE.SkinnedMesh with material.skinning set to false:', object );
+
+			}
+
+			var useSkinning = object.isSkinnedMesh && material.skinning;
+
 			var variantIndex = 0;
 
 			if ( useMorphing ) variantIndex |= _MorphingFlag;
+			if ( useSkinning ) variantIndex |= _SkinningFlag;
 
 			result = materialVariants[ variantIndex ];
 

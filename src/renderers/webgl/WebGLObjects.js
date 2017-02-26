@@ -2,29 +2,47 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-function WebGLObjects( gl, geometries ) {
+function WebGLObjects( gl, geometries, infoRender ) {
+
+	var updateList = {};
 
 	function update( object ) {
 
-		// TODO: Avoid updating twice (when using shadowMap). Maybe add frame counter.
+		var frame = infoRender.frame;
 
-		var geometry = geometries.get( object );
+		var geometry = object.geometry;
+		var buffergeometry = geometries.get( object, geometry );
 
-		if ( object.geometry.isGeometry ) {
+		// Update once per frame
 
-			geometry.updateFromObject( object );
+		if ( updateList[ buffergeometry.id ] !== frame ) {
+
+			if ( geometry.isGeometry ) {
+
+				buffergeometry.updateFromObject( object );
+
+			}
+
+			geometries.update( buffergeometry );
+
+			updateList[ buffergeometry.id ] = frame;
 
 		}
 
-		geometries.update( geometry );
+		return buffergeometry;
 
-		return geometry;
+	}
+
+	function clear() {
+
+		updateList = {};
 
 	}
 
 	return {
 
-		update: update
+		update: update,
+		clear: clear
 
 	};
 
